@@ -1,0 +1,109 @@
+Hotel Name,Price,Date,Site
+호텔 스카이파크 명동 3호점,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.agoda.com
+호텔 스카이파크 명동 3호점,"   room_price                               room_name
+0      288750  스탠다드 트윈3객실 한정★K-RAMEN + 얼리 체크인 1PM PKG
+1      288750                                 스탠다드 트윈
+2      322575                      스탠다드 트윈K-Ramen PKG
+3      433125                                      쿼드",2024-04-12,place-site.yanolja.com
+호텔 스카이파크 명동 3호점,"   room_price room_name
+0      281875  스탠다드 트윈룸
+1      285061  스탠다드 트윈룸
+2      427968       4인룸
+3      481918       4인룸",2024-04-12,kr.trip.com
+호텔 스카이파크 명동 3호점,"   room_price            room_name
+0      283783             스탠다드 트윈룸
+1      289865                  트윈룸
+2      312833                  트윈룸
+3      295662  [K-라면 패키지] 스탠다드 트윈룸
+4      434797                쿼드러플룸
+5      482760                쿼드러플룸",2024-04-12,www.booking.com
+호텔 스카이파크 명동 3호점,"   room_price      room_name
+0      292792       스탠다드 트윈룸
+1      306485  Twin Standard
+2      439189            쿼드룸",2024-04-12,www.expedia.co.kr
+밀리오레 호텔 서울 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.agoda.com
+밀리오레 호텔 서울 명동,"   room_price room_name
+0      188445  스탠다드 트윈룸",2024-04-12,www.expedia.co.kr
+밀리오레 호텔 서울 명동,"   room_price                 room_name
+0      195000  스탠다드 트윈무료주차/넷플릭스-개인계정로그인
+1      225000      스위트무료주차/넷플릭스-개인계정로그인",2024-04-12,place-site.yanolja.com
+밀리오레 호텔 서울 명동,"   room_price room_name
+0      213628  스탠다드 트윈룸",2024-04-12,www.booking.com
+밀리오레 호텔 서울 명동,"   room_price room_name
+0      210035  스탠다드 트윈룸
+1      234756  스탠다드 트윈룸",2024-04-12,kr.trip.com
+밀리오레 호텔 서울 명동,"   room_price room_name
+0      200000   스탠다드 트윈",2024-04-12,www.yeogi.com
+소테츠 프레사 인 서울 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.agoda.com
+소테츠 프레사 인 서울 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,place-site.yanolja.com
+소테츠 프레사 인 서울 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,kr.trip.com
+소테츠 프레사 인 서울 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.expedia.co.kr
+나인트리 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.agoda.com
+나인트리 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,kr.trip.com
+나인트리 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.expedia.co.kr
+나인트리 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,place-site.yanolja.com
+나인트리 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.yeogi.com
+프린스 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.agoda.com
+프린스 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.expedia.co.kr
+프린스 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,place-site.yanolja.com
+프린스 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.yeogi.com
+프린스 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,kr.trip.com
+스탠포드 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.agoda.com
+스탠포드 호텔 명동,"   room_price           room_name
+0      363000          핸디캡 더블주차불가
+1      363000         스탠다드 더블주차불가
+2      398600  스탠다드 더블2인 조식, 주차불가
+3      462000          디럭스 더블주차불가
+4      495000          패밀리 트윈주차불가
+5      530600   패밀리 트윈2인 조식, 주차불가",2024-04-12,place-site.yanolja.com
+스탠포드 호텔 명동,"   room_price room_name
+0      326700  스탠다드 더블룸
+1      358740  스탠다드 더블룸
+2      326700   핸디캡 더블룸
+3      358740   핸디캡 더블룸
+4      415800   디럭스 더블룸
+5      447840   디럭스 더블룸
+6      445500   패밀리 트윈룸
+7      477540   패밀리 트윈룸",2024-04-12,kr.trip.com
+스탠포드 호텔 명동,"   room_price    room_name
+0      288090     스탠다드 더블룸
+1      288090  더블룸, 장애인 지원
+2      366660      디럭스 더블룸
+3      392850      패밀리 트윈룸",2024-04-12,www.expedia.co.kr
+스탠포드 호텔 명동,"Empty DataFrame
+Columns: [room_price, room_name]
+Index: []",2024-04-12,www.yeogi.com
