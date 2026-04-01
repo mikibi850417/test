@@ -26,6 +26,7 @@ export function KioskRuntime({ children }: { children: ReactNode }) {
 
     const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
+
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
     return () => {
@@ -57,6 +58,7 @@ export function KioskRuntime({ children }: { children: ReactNode }) {
       "touchstart",
       "wheel",
     ];
+
     events.forEach((eventName) => window.addEventListener(eventName, resetIdleTimer));
     resetIdleTimer();
 
@@ -72,7 +74,7 @@ export function KioskRuntime({ children }: { children: ReactNode }) {
     <>
       {!online ? (
         <div className="kiosk-offline-banner" role="status" aria-live="polite">
-          네트워크 연결이 일시적으로 끊겼습니다. 마지막 데이터 기준으로 계속 표시합니다.
+          네트워크 연결이 일시적으로 끊겼습니다. 마지막으로 받은 정보를 기준으로 화면이 유지됩니다.
         </div>
       ) : null}
       {children}

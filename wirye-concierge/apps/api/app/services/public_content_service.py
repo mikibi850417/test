@@ -60,8 +60,10 @@ def get_dining(db: Session, hotel_id: str, lang: str) -> dict:
         "items": [
             {
                 "dining_id": row.dining_id,
+                "venue_name": row.venue_name,
                 "venue_name_kr": row.venue_name,
                 "venue_name_en": None,
+                "floor_location": row.floor_location,
                 "meal_types": [
                     name
                     for name, flag in (
@@ -86,7 +88,12 @@ def get_dining(db: Session, hotel_id: str, lang: str) -> dict:
                     if value
                 )
                 or None,
+                "hours_mon": row.hours_mon,
+                "hours_sat": row.hours_sat,
+                "hours_sun": row.hours_sun,
                 "price_info": row.pricing_notes,
+                "breakfast_adult_price_krw": row.breakfast_adult_price_krw,
+                "breakfast_child_price_krw": row.breakfast_child_price_krw,
                 "source_confidence": row.source_confidence,
                 "last_verified_at": row.last_verified_at,
             }
@@ -110,6 +117,9 @@ def get_facilities(db: Session, hotel_id: str, lang: str) -> dict:
                 "facility_type": row.facility_type,
                 "floor_location": row.floor_location,
                 "description": row.description,
+                "hours_mon": row.hours_mon,
+                "hours_sat": row.hours_sat,
+                "hours_sun": row.hours_sun,
                 "fee_required_yn": row.fee_required_yn,
                 "fee_note": row.fee_note,
                 "age_limit_min": row.age_limit_min,

@@ -9,6 +9,7 @@ type FacilityPayload = {
     facility_type?: string | null;
     floor_location?: string | null;
     description?: string | null;
+    fee_note?: string | null;
   }>;
 };
 
@@ -18,25 +19,40 @@ export default async function FacilitiesPage() {
 
   return (
     <main>
-      <div className="card">
-        <h1>부대시설</h1>
-      </div>
-      <div style={{ height: "0.8rem" }} />
+      <section className="card card-hero">
+        <p className="eyebrow">Facility Guide</p>
+        <h1 className="page-title">부대시설</h1>
+        <p className="page-subtitle">피트니스, 수영장, 골프, 사우나 시설 이용 정보를 확인하세요.</p>
+      </section>
 
-      <div className="list">
-        {items.length === 0 ? <div className="list-item">표시할 데이터가 없습니다.</div> : null}
+      <section className="list">
+        {items.length === 0 ? <div className="list-item">현재 제공 가능한 부대시설 정보가 없습니다.</div> : null}
         {items.map((item) => (
-          <div className="list-item" key={item.facility_id}>
+          <article className="list-item" key={item.facility_id}>
             <h3>{item.facility_name ?? item.facility_id}</h3>
-            <p>유형: {item.facility_type ?? "-"}</p>
-            <p>위치: {item.floor_location ?? "-"}</p>
-            <p>{item.description ?? "-"}</p>
-          </div>
+            <div className="detail-grid">
+              <p>
+                <strong>분류</strong>
+                <span>{item.facility_type ?? "-"}</span>
+              </p>
+              <p>
+                <strong>위치</strong>
+                <span>{item.floor_location ?? "-"}</span>
+              </p>
+              <p>
+                <strong>설명</strong>
+                <span>{item.description ?? "-"}</span>
+              </p>
+              <p>
+                <strong>요금</strong>
+                <span>{item.fee_note ?? "-"}</span>
+              </p>
+            </div>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/">
+      <Link className="button back-button" href="/">
         홈으로
       </Link>
     </main>

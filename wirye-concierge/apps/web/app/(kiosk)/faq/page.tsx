@@ -1,12 +1,78 @@
 import Link from "next/link";
 
+import { buildFaqPlaceholderMap, resolveFaqTemplate } from "@/lib/faq-answer";
 import { fetchPublicPath } from "@/lib/public-api";
 
+type FaqItem = {
+  intent_id: string;
+  question_example_ko?: string | null;
+  answer_template_ko?: string | null;
+};
+
 type FaqPayload = {
+  items?: FaqItem[];
+};
+
+type HomePayload = {
+  hotel?: {
+    check_in_time?: string | null;
+    check_out_time?: string | null;
+    phone?: string | null;
+  };
+};
+
+type DiningPayload = {
   items?: Array<{
-    intent_id: string;
-    question_example_ko?: string | null;
-    answer_template_ko?: string | null;
+    dining_id: string;
+    venue_name_kr?: string | null;
+    floor_location?: string | null;
+    hours_mon?: string | null;
+    operating_hours?: string | null;
+    breakfast_adult_price_krw?: number | null;
+    breakfast_child_price_krw?: number | null;
+  }>;
+};
+
+type FacilityPayload = {
+  items?: Array<{
+    facility_id: string;
+    facility_name?: string | null;
+    hours_mon?: string | null;
+    hours_sat?: string | null;
+    hours_sun?: string | null;
+    fee_note?: string | null;
+    age_policy_note?: string | null;
+  }>;
+};
+
+type ServicePayload = {
+  items?: Array<{
+    service_id: string;
+    service_name?: string | null;
+    fee_note?: string | null;
+  }>;
+};
+
+type TransportPayload = {
+  items?: Array<{
+    transport_id: string;
+    route_detail?: string | null;
+  }>;
+};
+
+type NearbyPayload = {
+  items?: Array<{
+    place_id: string;
+    name_kr?: string | null;
+    walk_minutes_display?: number | null;
+  }>;
+};
+
+type EmergencyPayload = {
+  items?: Array<{
+    emergency_id: string;
+    contact_name?: string | null;
+    phone?: string | null;
   }>;
 };
 
@@ -17,29 +83,61 @@ export default async function FaqPage({
 }) {
   const { q } = await searchParams;
   const query = q?.trim() || "체크아웃";
-  const data = await fetchPublicPath<FaqPayload>(`/faq/search?q=${encodeURIComponent(query)}`);
-  const items = data?.items ?? [];
+
+  const [
+    faqData,
+    homeData,
+    diningData,
+    facilitiesData,
+    servicesData,
+    transportData,
+    nearbyData,
+    emergencyData,
+  ] = await Promise.all([
+    fetchPublicPath<FaqPayload>(`/faq/search?q=${encodeURIComponent(query)}`),
+    fetchPublicPath<HomePayload>("/home"),
+    fetchPublicPath<DiningPayload>("/dining"),
+    fetchPublicPath<FacilityPayload>("/facilities"),
+    fetchPublicPath<ServicePayload>("/services"),
+    fetchPublicPath<TransportPayload>("/transport"),
+    fetchPublicPath<NearbyPayload>("/nearby-places"),
+    fetchPublicPath<EmergencyPayload>("/emergency"),
+  ]);
+
+  const placeholderMap = buildFaqPlaceholderMap({
+    home: homeData,
+    dining: diningData,
+    facilities: facilitiesData,
+    services: servicesData,
+    transport: transportData,
+    nearby: nearbyData,
+    emergency: emergencyData,
+  });
+
+  const items = (faqData?.items ?? []).map((item) => ({
+    ...item,
+    resolvedAnswer: resolveFaqTemplate(item.answer_template_ko, placeholderMap),
+  }));
 
   return (
     <main>
-      <div className="card">
-        <h1>FAQ</h1>
-        <p className="subtext">검색어: {query}</p>
-      </div>
-      <div style={{ height: "0.8rem" }} />
+      <section className="card card-hero">
+        <p className="eyebrow">Smart FAQ</p>
+        <h1 className="page-title">FAQ</h1>
+        <p className="page-subtitle">검색어: {query}</p>
+      </section>
 
-      <div className="list">
+      <section className="list">
         {items.length === 0 ? <div className="list-item">검색 결과가 없습니다.</div> : null}
         {items.map((item) => (
-          <div className="list-item" key={item.intent_id}>
+          <article className="list-item" key={item.intent_id}>
             <h3>{item.question_example_ko ?? item.intent_id}</h3>
-            <p>{item.answer_template_ko ?? "-"}</p>
-          </div>
+            <p>{item.resolvedAnswer}</p>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/">
+      <Link className="button back-button" href="/">
         홈으로
       </Link>
     </main>

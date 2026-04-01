@@ -37,38 +37,59 @@ export default async function NearbyDetailPage({
 
   return (
     <main>
-      <div className="card">
-        <h1>{item?.name_kr ?? placeId}</h1>
-        <p className="subtext">
+      <section className="card card-hero">
+        <p className="eyebrow">Nearby Detail</p>
+        <h1 className="page-title">{item?.name_kr ?? placeId}</h1>
+        <p className="page-subtitle">
           {item?.category ?? "-"} / {item?.subcategory ?? "-"}
         </p>
-      </div>
-      <div style={{ height: "0.8rem" }} />
+      </section>
 
-      <div className="list">
-        <div className="list-item">
-          <p>{item?.short_desc ?? "-"}</p>
-          <p>주소: {item?.address ?? "-"}</p>
-          <p>도보: {item?.walk_time_min ? `${item.walk_time_min}분` : "-"}</p>
-          <p>차량: {item?.drive_time_min ? `${item.drive_time_min}분` : "-"}</p>
-          <p>대중교통: {item?.transit_time_min ? `${item.transit_time_min}분` : "-"}</p>
-        </div>
+      <section className="list">
+        <article className="list-item">
+          <div className="detail-grid">
+            <p>
+              <strong>간단 소개</strong>
+              <span>{item?.short_desc ?? "-"}</span>
+            </p>
+            <p>
+              <strong>주소</strong>
+              <span>{item?.address ?? "-"}</span>
+            </p>
+            <p>
+              <strong>도보</strong>
+              <span>{typeof item?.walk_time_min === "number" ? `${item.walk_time_min}분` : "-"}</span>
+            </p>
+            <p>
+              <strong>차량</strong>
+              <span>{typeof item?.drive_time_min === "number" ? `${item.drive_time_min}분` : "-"}</span>
+            </p>
+            <p>
+              <strong>대중교통</strong>
+              <span>{typeof item?.transit_time_min === "number" ? `${item.transit_time_min}분` : "-"}</span>
+            </p>
+          </div>
+        </article>
 
         {(routes?.items ?? []).map((route) => (
-          <div className="list-item" key={route.route_id}>
-            <h3>{route.transport_mode ?? "route"}</h3>
-            <p>예상 소요: {route.estimated_duration_min ? `${route.estimated_duration_min}분` : "-"}</p>
-            <div className="list">
+          <article className="list-item" key={route.route_id}>
+            <h3>{route.transport_mode ?? "경로 안내"}</h3>
+            <p className="muted">
+              예상 소요:{" "}
+              {typeof route.estimated_duration_min === "number"
+                ? `${route.estimated_duration_min}분`
+                : "-"}
+            </p>
+            <ol className="step-list">
               {(route.steps ?? []).map((step, index) => (
-                <p key={`${route.route_id}_${index}`}>{`${index + 1}. ${step}`}</p>
+                <li key={`${route.route_id}_${index}`}>{step}</li>
               ))}
-            </div>
-          </div>
+            </ol>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/nearby">
+      <Link className="button back-button" href="/nearby">
         주변 목록으로
       </Link>
     </main>

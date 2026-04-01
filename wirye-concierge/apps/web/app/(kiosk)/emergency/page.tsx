@@ -19,26 +19,40 @@ export default async function EmergencyPage() {
 
   return (
     <main>
-      <div className="card">
-        <h1>응급 안내</h1>
-      </div>
-      <div style={{ height: "0.8rem" }} />
+      <section className="card card-hero">
+        <p className="eyebrow">Emergency & Safety</p>
+        <h1 className="page-title">응급 안내</h1>
+        <p className="page-subtitle">응급 연락처와 가까운 의료 시설 정보를 확인합니다.</p>
+      </section>
 
-      <div className="list">
-        {items.length === 0 ? <div className="list-item">표시할 데이터가 없습니다.</div> : null}
+      <section className="list">
+        {items.length === 0 ? <div className="list-item">현재 제공 가능한 응급 정보가 없습니다.</div> : null}
         {items.map((item) => (
-          <div className="list-item" key={item.emergency_id}>
+          <article className="list-item" key={item.emergency_id}>
             <h3>{item.contact_name ?? item.emergency_id}</h3>
-            <p>분류: {item.category ?? "-"}</p>
-            <p>전화: {item.phone ?? "-"}</p>
-            <p>차량 소요: {item.drive_time_min ? `${item.drive_time_min}분` : "-"}</p>
-            <p>24시간: {item.available_24h_yn ? "예" : "아니오/미확인"}</p>
-          </div>
+            <div className="detail-grid">
+              <p>
+                <strong>분류</strong>
+                <span>{item.category ?? "-"}</span>
+              </p>
+              <p>
+                <strong>전화</strong>
+                <span>{item.phone ?? "-"}</span>
+              </p>
+              <p>
+                <strong>차량 소요</strong>
+                <span>{typeof item.drive_time_min === "number" ? `${item.drive_time_min}분` : "-"}</span>
+              </p>
+              <p>
+                <strong>24시간 운영</strong>
+                <span>{item.available_24h_yn ? "가능" : "확인 필요"}</span>
+              </p>
+            </div>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/">
+      <Link className="button back-button" href="/">
         홈으로
       </Link>
     </main>

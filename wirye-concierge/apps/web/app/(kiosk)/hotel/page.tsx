@@ -19,25 +19,38 @@ export default async function HotelPage() {
 
   return (
     <main>
-      <div className="card">
-        <h1>호텔 안내</h1>
-        <p className="subtext">기본 정보는 승인된 공개 데이터만 표시됩니다.</p>
-      </div>
-      <div style={{ height: "0.8rem" }} />
+      <section className="card card-hero">
+        <p className="eyebrow">Hotel Information</p>
+        <h1 className="page-title">호텔 안내</h1>
+        <p className="page-subtitle">기본 정보, 연락처, 체크인/체크아웃 시간을 안내합니다.</p>
+      </section>
 
-      <div className="list">
-        <div className="list-item">
-          <h3>{hotel?.name_kr ?? "정보 없음"}</h3>
+      <section className="list">
+        <article className="list-item">
+          <h3>{hotel?.name_kr ?? "호텔 정보가 없습니다."}</h3>
           <p className="muted">{hotel?.name_en ?? "-"}</p>
-          <p>주소: {hotel?.address ?? "-"}</p>
-          <p>대표번호: {hotel?.phone ?? "-"}</p>
-          <p>체크인: {hotel?.check_in_time ?? "-"}</p>
-          <p>체크아웃: {hotel?.check_out_time ?? "-"}</p>
-        </div>
-      </div>
+          <div className="detail-grid">
+            <p>
+              <strong>주소</strong>
+              <span>{hotel?.address ?? "-"}</span>
+            </p>
+            <p>
+              <strong>대표번호</strong>
+              <span>{hotel?.phone ?? "-"}</span>
+            </p>
+            <p>
+              <strong>체크인</strong>
+              <span>{hotel?.check_in_time ?? "-"}</span>
+            </p>
+            <p>
+              <strong>체크아웃</strong>
+              <span>{hotel?.check_out_time ?? "-"}</span>
+            </p>
+          </div>
+        </article>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/">
+      <Link className="button back-button" href="/">
         홈으로
       </Link>
     </main>

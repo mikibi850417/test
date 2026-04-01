@@ -19,35 +19,47 @@ export default async function NearbyPage() {
 
   return (
     <main>
-      <div className="card">
-        <h1>주변 인프라</h1>
-      </div>
-      <div style={{ height: "0.8rem" }} />
+      <section className="card card-hero">
+        <p className="eyebrow">Nearby Curations</p>
+        <h1 className="page-title">주변 추천</h1>
+        <p className="page-subtitle">호텔 근처의 관광, 쇼핑, 생활 편의 장소를 안내합니다.</p>
+      </section>
 
-      <div className="list">
-        {items.length === 0 ? <div className="list-item">표시할 데이터가 없습니다.</div> : null}
+      <section className="list">
+        {items.length === 0 ? <div className="list-item">현재 제공 가능한 주변 정보가 없습니다.</div> : null}
         {items.map((item) => (
-          <div className="list-item" key={item.place_id}>
+          <article className="list-item" key={item.place_id}>
             <h3>{item.name_kr ?? item.place_id}</h3>
-            <p>
-              {item.category ?? "-"} / {item.subcategory ?? "-"}
-            </p>
-            <p>
-              거리:{" "}
-              {typeof item.distance_m_display === "number"
-                ? `${Math.round(item.distance_m_display)}m`
-                : "-"}
-            </p>
-            <p>도보: {item.walk_minutes_display ? `${item.walk_minutes_display}분` : "-"}</p>
-            <Link className="button" href={`/nearby/${item.place_id}`}>
+            <div className="detail-grid">
+              <p>
+                <strong>카테고리</strong>
+                <span>
+                  {item.category ?? "-"} / {item.subcategory ?? "-"}
+                </span>
+              </p>
+              <p>
+                <strong>거리</strong>
+                <span>
+                  {typeof item.distance_m_display === "number"
+                    ? `${Math.round(item.distance_m_display)}m`
+                    : "-"}
+                </span>
+              </p>
+              <p>
+                <strong>도보 소요</strong>
+                <span>
+                  {typeof item.walk_minutes_display === "number" ? `${item.walk_minutes_display}분` : "-"}
+                </span>
+              </p>
+            </div>
+            <Link className="button button-inline" href={`/nearby/${item.place_id}`}>
               상세 보기
             </Link>
-          </div>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/">
+      <Link className="button back-button" href="/">
         홈으로
       </Link>
     </main>

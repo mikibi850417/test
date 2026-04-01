@@ -12,6 +12,7 @@ from app.models.nearby import NearbyPlace
 from app.models.nearby_route import NearbyRoute
 from app.models.notice import TemporaryNotice
 from app.models.publish import PublishVersion
+from app.models.transport import TransportAccess
 
 __all__ = [
     "ConflictLog",
@@ -29,4 +30,5 @@ __all__ = [
     "NearbyRoute",
     "PublishVersion",
     "TemporaryNotice",
+    "TransportAccess",
 ]

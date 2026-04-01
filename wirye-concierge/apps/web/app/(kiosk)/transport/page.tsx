@@ -19,26 +19,40 @@ export default async function TransportPage() {
 
   return (
     <main>
-      <div className="card">
-        <h1>교통 / 오시는 길</h1>
-      </div>
-      <div style={{ height: "0.8rem" }} />
+      <section className="card card-hero">
+        <p className="eyebrow">Transportation</p>
+        <h1 className="page-title">교통/이동 안내</h1>
+        <p className="page-subtitle">공항, 지하철, 버스 이동 경로를 확인하세요.</p>
+      </section>
 
-      <div className="list">
-        {items.length === 0 ? <div className="list-item">표시할 데이터가 없습니다.</div> : null}
+      <section className="list">
+        {items.length === 0 ? <div className="list-item">현재 제공 가능한 교통 정보가 없습니다.</div> : null}
         {items.map((item) => (
-          <div className="list-item" key={item.transport_id}>
+          <article className="list-item" key={item.transport_id}>
             <h3>{item.origin_name ?? item.transport_id}</h3>
-            <p>수단: {item.transport_mode ?? "-"}</p>
-            <p>예상 소요: {item.duration_min ? `${item.duration_min}분` : "-"}</p>
-            <p>요금/메모: {item.fare_note ?? "-"}</p>
-            <p>{item.route_detail ?? "-"}</p>
-          </div>
+            <div className="detail-grid">
+              <p>
+                <strong>이동 수단</strong>
+                <span>{item.transport_mode ?? "-"}</span>
+              </p>
+              <p>
+                <strong>예상 시간</strong>
+                <span>{typeof item.duration_min === "number" ? `${item.duration_min}분` : "-"}</span>
+              </p>
+              <p>
+                <strong>요금/메모</strong>
+                <span>{item.fare_note ?? "-"}</span>
+              </p>
+              <p>
+                <strong>경로 안내</strong>
+                <span>{item.route_detail ?? "-"}</span>
+              </p>
+            </div>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/">
+      <Link className="button back-button" href="/">
         홈으로
       </Link>
     </main>

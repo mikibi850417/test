@@ -6,6 +6,7 @@ type DiningPayload = {
   items?: Array<{
     dining_id: string;
     venue_name_kr?: string | null;
+    floor_location?: string | null;
     operating_hours?: string | null;
     price_info?: string | null;
   }>;
@@ -17,25 +18,36 @@ export default async function DiningPage() {
 
   return (
     <main>
-      <div className="card">
-        <h1>식음 안내</h1>
-        <p className="subtext">레스토랑/조식 정보를 확인하세요.</p>
-      </div>
+      <section className="card card-hero">
+        <p className="eyebrow">Dining & Lounge</p>
+        <h1 className="page-title">식음 안내</h1>
+        <p className="page-subtitle">레스토랑, 라운지, 조식 운영 정보를 확인하세요.</p>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <div className="list">
-        {items.length === 0 ? <div className="list-item">표시할 데이터가 없습니다.</div> : null}
+      <section className="list">
+        {items.length === 0 ? <div className="list-item">현재 제공 가능한 식음 정보가 없습니다.</div> : null}
         {items.map((item) => (
-          <div className="list-item" key={item.dining_id}>
+          <article className="list-item" key={item.dining_id}>
             <h3>{item.venue_name_kr ?? item.dining_id}</h3>
-            <p>운영시간: {item.operating_hours ?? "-"}</p>
-            <p>요금: {item.price_info ?? "-"}</p>
-          </div>
+            <div className="detail-grid">
+              <p>
+                <strong>위치</strong>
+                <span>{item.floor_location ?? "-"}</span>
+              </p>
+              <p>
+                <strong>운영시간</strong>
+                <span>{item.operating_hours ?? "-"}</span>
+              </p>
+              <p>
+                <strong>요금/메모</strong>
+                <span>{item.price_info ?? "-"}</span>
+              </p>
+            </div>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ height: "0.8rem" }} />
-      <Link className="button" href="/">
+      <Link className="button back-button" href="/">
         홈으로
       </Link>
     </main>
