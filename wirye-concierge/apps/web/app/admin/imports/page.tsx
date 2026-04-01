@@ -22,6 +22,9 @@ type ImportJob = {
   status: string;
   source_type: string;
   created_at: string;
+  created_by?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
   latest_run: RunSummary | null;
 };
 
@@ -40,9 +43,15 @@ type ReportResponse = {
   file_name: string;
   file_path: string;
   status: string;
+  approved_by?: string | null;
+  approved_at?: string | null;
   latest_run: RunSummary | null;
   report: ImportReport;
 };
+
+function fmt(value?: string | null): string {
+  return value ?? "-";
+}
 
 export default function AdminImportsPage() {
   const [jobs, setJobs] = useState<ImportJob[]>([]);
@@ -55,7 +64,7 @@ export default function AdminImportsPage() {
   async function loadJobs() {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (!token) {
-      setError("로그인이 필요합니다.");
+      setError("Login required.");
       return;
     }
     try {
@@ -63,7 +72,7 @@ export default function AdminImportsPage() {
       setJobs(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Import 목록 조회 실패");
+      setError(err instanceof Error ? err.message : "Failed to load import jobs.");
     }
   }
 
@@ -74,11 +83,11 @@ export default function AdminImportsPage() {
   async function onUpload() {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (!token) {
-      setError("로그인이 필요합니다.");
+      setError("Login required.");
       return;
     }
     if (!selectedFile) {
-      setError("업로드할 파일을 선택해주세요.");
+      setError("Please select a JSON file.");
       return;
     }
 
@@ -96,7 +105,7 @@ export default function AdminImportsPage() {
       await loadJobs();
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "파일 업로드 실패");
+      setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setWorking(false);
     }
@@ -105,7 +114,7 @@ export default function AdminImportsPage() {
   async function loadReport(importJobId: string) {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (!token) {
-      setError("로그인이 필요합니다.");
+      setError("Login required.");
       return;
     }
     setWorking(true);
@@ -116,10 +125,10 @@ export default function AdminImportsPage() {
       );
       setSelectedJobId(importJobId);
       setSelectedReport(report);
-      setError(null);
       await loadJobs();
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "리포트 조회 실패");
+      setError(err instanceof Error ? err.message : "Failed to load report.");
     } finally {
       setWorking(false);
     }
@@ -128,7 +137,7 @@ export default function AdminImportsPage() {
   async function runValidation(importJobId: string) {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (!token) {
-      setError("로그인이 필요합니다.");
+      setError("Login required.");
       return;
     }
     setWorking(true);
@@ -137,7 +146,25 @@ export default function AdminImportsPage() {
       await loadReport(importJobId);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "검증 실행 실패");
+      setError(err instanceof Error ? err.message : "Validation failed.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function approveImport(importJobId: string) {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+    if (!token) {
+      setError("Login required.");
+      return;
+    }
+    setWorking(true);
+    try {
+      await adminFetch(`/api/v1/admin/imports/${importJobId}/approve`, token, { method: "POST" });
+      await loadReport(importJobId);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Approval failed.");
     } finally {
       setWorking(false);
     }
@@ -146,7 +173,7 @@ export default function AdminImportsPage() {
   async function applyImport(importJobId: string) {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (!token) {
-      setError("로그인이 필요합니다.");
+      setError("Login required.");
       return;
     }
     setWorking(true);
@@ -155,7 +182,7 @@ export default function AdminImportsPage() {
       await loadReport(importJobId);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "적용 실행 실패");
+      setError(err instanceof Error ? err.message : "Apply failed.");
     } finally {
       setWorking(false);
     }
@@ -164,8 +191,8 @@ export default function AdminImportsPage() {
   return (
     <main>
       <div className="card">
-        <h1>Import 관리</h1>
-        <p className="subtext">업로드, 검증, 실제 반영을 순차적으로 수행합니다.</p>
+        <h1>Import Management</h1>
+        <p className="subtext">Workflow: Upload -&gt; Validate -&gt; Approve -&gt; Apply</p>
       </div>
 
       <div style={{ height: "0.8rem" }} />
@@ -178,7 +205,7 @@ export default function AdminImportsPage() {
         />
         <div style={{ height: "0.8rem" }} />
         <button className="button" disabled={working} onClick={() => void onUpload()}>
-          {working ? "처리 중..." : "파일 업로드"}
+          {working ? "Processing..." : "Upload File"}
         </button>
       </div>
 
@@ -190,16 +217,22 @@ export default function AdminImportsPage() {
           <div className="list-item" key={job.import_job_id}>
             <h3>{job.file_name}</h3>
             <p>ID: {job.import_job_id}</p>
-            <p>상태: {job.status}</p>
-            <p>소스: {job.source_type}</p>
-            <p>생성: {job.created_at}</p>
-            <p>최근 실행: {job.latest_run?.run_status ?? "-"}</p>
+            <p>Status: {job.status}</p>
+            <p>Source: {job.source_type}</p>
+            <p>Created At: {fmt(job.created_at)}</p>
+            <p>Created By: {fmt(job.created_by)}</p>
+            <p>Approved By: {fmt(job.approved_by)}</p>
+            <p>Approved At: {fmt(job.approved_at)}</p>
+            <p>Latest Run: {job.latest_run?.run_status ?? "-"}</p>
             <div className="row">
               <button className="button-ghost" onClick={() => void loadReport(job.import_job_id)}>
                 Report
               </button>
               <button className="button-ghost" onClick={() => void runValidation(job.import_job_id)}>
                 Validate
+              </button>
+              <button className="button-ghost" onClick={() => void approveImport(job.import_job_id)}>
+                Approve
               </button>
               <button className="button-ghost" onClick={() => void applyImport(job.import_job_id)}>
                 Apply
@@ -213,13 +246,16 @@ export default function AdminImportsPage() {
         <>
           <div style={{ height: "0.8rem" }} />
           <div className="card">
-            <h3>선택된 리포트: {selectedJobId}</h3>
-            <p>valid: {String(selectedReport.report.valid)}</p>
-            <p>rows_total: {selectedReport.report.rows_total}</p>
-            <p>file_hash: {selectedReport.report.file_hash ?? "-"}</p>
-            <p>file_size_bytes: {selectedReport.report.file_size_bytes}</p>
-            <p>errors: {selectedReport.report.errors.length}</p>
-            <p>warnings: {selectedReport.report.warnings.length}</p>
+            <h3>Selected Report: {selectedJobId}</h3>
+            <p>Status: {selectedReport.status}</p>
+            <p>Approved By: {fmt(selectedReport.approved_by)}</p>
+            <p>Approved At: {fmt(selectedReport.approved_at)}</p>
+            <p>Valid: {String(selectedReport.report.valid)}</p>
+            <p>Rows Total: {selectedReport.report.rows_total}</p>
+            <p>File Hash: {fmt(selectedReport.report.file_hash)}</p>
+            <p>File Size: {selectedReport.report.file_size_bytes} bytes</p>
+            <p>Errors: {selectedReport.report.errors.length}</p>
+            <p>Warnings: {selectedReport.report.warnings.length}</p>
             <pre>{JSON.stringify(selectedReport.report.table_counts, null, 2)}</pre>
           </div>
         </>
@@ -227,7 +263,7 @@ export default function AdminImportsPage() {
 
       <div style={{ height: "0.8rem" }} />
       <Link className="button-ghost" href="/admin">
-        관리자 홈
+        Back To Admin Home
       </Link>
     </main>
   );

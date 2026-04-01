@@ -39,7 +39,14 @@ export async function adminFetch<T>(
     headers,
   });
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    let detail = "";
+    try {
+      const body = (await response.json()) as { detail?: string };
+      detail = body.detail ? ` - ${body.detail}` : "";
+    } catch {
+      // ignore parse error and keep status-only message
+    }
+    throw new Error(`Request failed: ${response.status}${detail}`);
   }
   return (await response.json()) as T;
 }

@@ -15,6 +15,8 @@ class ImportJob(Base):
     source_type: Mapped[str] = mapped_column(String, nullable=False, default="json")
     status: Mapped[str] = mapped_column(String, nullable=False, default="created")
     created_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -42,6 +42,20 @@ def _serialize_run(run: JobRun | None) -> dict | None:
     }
 
 
+def _serialize_job(job: ImportJob, run: JobRun | None = None) -> dict:
+    return {
+        "import_job_id": job.import_job_id,
+        "file_name": job.file_name,
+        "status": job.status,
+        "source_type": job.source_type,
+        "created_at": job.created_at,
+        "created_by": job.created_by,
+        "approved_by": job.approved_by,
+        "approved_at": job.approved_at,
+        "latest_run": _serialize_run(run),
+    }
+
+
 def _resolve_import_file(import_job_id: str, file_name: str) -> Path | None:
     settings = get_settings()
     tmp_dir = Path(settings.import_tmp_dir)
@@ -63,20 +77,7 @@ def list_import_jobs(
     db: Session = Depends(get_db),
 ) -> list[dict]:
     jobs = db.execute(select(ImportJob).order_by(ImportJob.created_at.desc()).limit(100)).scalars().all()
-    output = []
-    for job in jobs:
-        latest = _latest_run(db, job.import_job_id)
-        output.append(
-            {
-                "import_job_id": job.import_job_id,
-                "file_name": job.file_name,
-                "status": job.status,
-                "source_type": job.source_type,
-                "created_at": job.created_at,
-                "latest_run": _serialize_run(latest),
-            }
-        )
-    return output
+    return [_serialize_job(job, _latest_run(db, job.import_job_id)) for job in jobs]
 
 
 @router.post("")
@@ -151,6 +152,8 @@ def run_import_validation(
     )
     db.add(run)
     job.status = "validated" if valid else "validation_failed"
+    job.approved_by = None
+    job.approved_at = None
 
     write_audit(
         db,
@@ -174,6 +177,8 @@ def run_import_validation(
         "import_job_id": import_job_id,
         "status": job.status,
         "latest_run": _serialize_run(run),
+        "approved_by": job.approved_by,
+        "approved_at": job.approved_at,
         "report": report,
     }
 
@@ -195,14 +200,60 @@ def get_import_report(
     report = build_import_report(target_path)
     latest = _latest_run(db, import_job_id)
     return {
-        "import_job_id": job.import_job_id,
-        "file_name": job.file_name,
+        **_serialize_job(job, latest),
         "file_path": target_path.as_posix(),
-        "status": job.status,
-        "source_type": job.source_type,
-        "created_at": job.created_at,
-        "latest_run": _serialize_run(latest),
         "report": report,
+    }
+
+
+@router.post("/{import_job_id}/approve")
+def approve_import_job(
+    import_job_id: str,
+    subject: str = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    job = db.get(ImportJob, import_job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="import job not found")
+
+    target_path = _resolve_import_file(import_job_id, job.file_name)
+    if target_path is None:
+        raise HTTPException(status_code=404, detail="import file not found")
+
+    latest = _latest_run(db, import_job_id)
+    if latest is None or latest.run_status != "completed":
+        raise HTTPException(status_code=409, detail="import blocked: run validation first")
+
+    report = build_import_report(target_path)
+    if not report["valid"]:
+        raise HTTPException(status_code=409, detail="import blocked: validation failed")
+
+    approved_at = datetime.now(timezone.utc)
+    job.status = "approved"
+    job.approved_by = subject
+    job.approved_at = approved_at
+
+    write_audit(
+        db,
+        actor=subject,
+        action="import_approve",
+        entity_type="import_job",
+        entity_id=import_job_id,
+        detail={
+            "file_path": target_path.as_posix(),
+            "approved_at": approved_at.isoformat(),
+            "latest_run_id": latest.job_run_id,
+        },
+    )
+    db.commit()
+    db.refresh(job)
+
+    return {
+        "import_job_id": import_job_id,
+        "status": job.status,
+        "approved_by": job.approved_by,
+        "approved_at": job.approved_at,
+        "latest_run": _serialize_run(latest),
     }
 
 
@@ -219,6 +270,13 @@ def apply_import_job(
     target_path = _resolve_import_file(import_job_id, job.file_name)
     if target_path is None:
         raise HTTPException(status_code=404, detail="import file not found")
+
+    if job.status != "approved" or not job.approved_by:
+        raise HTTPException(status_code=409, detail="import blocked: approval required")
+
+    latest_validation = _latest_run(db, import_job_id)
+    if latest_validation is None or latest_validation.run_status != "completed":
+        raise HTTPException(status_code=409, detail="import blocked: run validation first")
 
     report = build_import_report(target_path)
     if not report["valid"]:
@@ -259,6 +317,8 @@ def apply_import_job(
         "import_job_id": refreshed.import_job_id,
         "status": refreshed.status,
         "file_name": refreshed.file_name,
+        "approved_by": refreshed.approved_by,
+        "approved_at": refreshed.approved_at,
         "latest_run": _serialize_run(latest),
         "rows_total": run_result["rows_total"],
     }
