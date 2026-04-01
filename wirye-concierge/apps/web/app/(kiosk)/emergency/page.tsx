@@ -22,14 +22,17 @@ export default async function EmergencyPage() {
       <section className="card card-hero">
         <p className="eyebrow">Emergency & Safety</p>
         <h1 className="page-title">응급 안내</h1>
-        <p className="page-subtitle">응급 연락처와 가까운 의료 시설 정보를 확인합니다.</p>
+        <p className="page-subtitle">응급 연락처와 가까운 의료시설 정보를 우선적으로 안내합니다.</p>
       </section>
 
       <section className="list">
-        {items.length === 0 ? <div className="list-item">현재 제공 가능한 응급 정보가 없습니다.</div> : null}
+        {items.length === 0 ? <div className="list-item empty-state">현재 제공 가능한 응급 정보가 없습니다.</div> : null}
         {items.map((item) => (
           <article className="list-item" key={item.emergency_id}>
-            <h3>{item.contact_name ?? item.emergency_id}</h3>
+            <div className="list-item-head">
+              <h3>{item.contact_name ?? item.emergency_id}</h3>
+              <span className="chip">Emergency</span>
+            </div>
             <div className="detail-grid">
               <p>
                 <strong>분류</strong>
@@ -40,11 +43,11 @@ export default async function EmergencyPage() {
                 <span>{item.phone ?? "-"}</span>
               </p>
               <p>
-                <strong>차량 소요</strong>
+                <strong>차량소요</strong>
                 <span>{typeof item.drive_time_min === "number" ? `${item.drive_time_min}분` : "-"}</span>
               </p>
               <p>
-                <strong>24시간 운영</strong>
+                <strong>24시간</strong>
                 <span>{item.available_24h_yn ? "가능" : "확인 필요"}</span>
               </p>
             </div>

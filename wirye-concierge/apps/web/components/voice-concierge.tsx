@@ -3,8 +3,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { buildFaqPlaceholderMap, resolveFaqTemplate } from "@/lib/faq-answer";
+import {
+  buildFaqPlaceholderMap,
+  extractRelevantAnswerChunks,
+  rankFaqByQuestion,
+  resolveFaqTemplate,
+} from "@/lib/faq-answer";
 import { fetchPublicPath } from "@/lib/public-api";
+
+type SpeechRecognitionResultLike = {
+  transcript?: string;
+};
+
+type SpeechRecognitionEventLike = {
+  results?: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
 
 type ListPayload<T> = { items?: T[] };
 
@@ -69,7 +95,10 @@ type NoticeItem = {
 
 type FaqItem = {
   intent_id: string;
+  question_example_ko?: string | null;
+  question_example_en?: string | null;
   answer_template_ko?: string | null;
+  answer_template_en?: string | null;
 };
 
 type VoiceResult = {
@@ -118,13 +147,13 @@ function detectAction(question: string): VoiceAction {
   ) {
     return "hotel";
   }
-  if (hasAnyKeyword(q, ["다이닝", "식당", "레스토랑", "조식", "아침", "카페", "dining", "breakfast"])) {
+  if (hasAnyKeyword(q, ["다이닝", "식당", "레스토랑", "조식", "석식", "카페", "dining", "breakfast"])) {
     return "dining";
   }
-  if (hasAnyKeyword(q, ["시설", "부대시설", "피트니스", "헬스장", "수영장", "사우나", "facility", "gym"])) {
+  if (hasAnyKeyword(q, ["시설", "부대시설", "피트니스", "수영장", "사우나", "facility", "gym"])) {
     return "facilities";
   }
-  if (hasAnyKeyword(q, ["서비스", "룸서비스", "세탁", "컨시어지", "프런트", "service", "concierge"])) {
+  if (hasAnyKeyword(q, ["서비스", "룸서비스", "컨시어지", "프런트", "service", "concierge"])) {
     return "services";
   }
   if (hasAnyKeyword(q, ["교통", "가는 길", "지하철", "버스", "공항", "택시", "transport", "subway", "airport"])) {
@@ -133,7 +162,7 @@ function detectAction(question: string): VoiceAction {
   if (hasAnyKeyword(q, ["주변", "근처", "관광", "명소", "맛집", "nearby", "attraction"])) {
     return "nearby";
   }
-  if (hasAnyKeyword(q, ["응급", "병원", "약국", "경찰", "소방", "emergency", "hospital", "pharmacy"])) {
+  if (hasAnyKeyword(q, ["응급", "병원", "약국", "경찰", "비상", "emergency", "hospital", "pharmacy"])) {
     return "emergency";
   }
   if (hasAnyKeyword(q, ["공지", "알림", "노티스", "notice", "announcement"])) {
@@ -225,9 +254,33 @@ async function answerFromFaq(question: string): Promise<VoiceResult> {
     emergency: emergencyData,
   });
 
+  const ranked = rankFaqByQuestion(items, question, { maxResults: 3, minScore: 10 });
+  if (ranked.length === 0) {
+    return {
+      route: `/faq?q=${encodeURIComponent(question)}`,
+      reply: "관련 안내는 찾았지만 정확한 답변 매칭이 어려웠습니다. 화면에서 항목을 확인해 주세요.",
+    };
+  }
+
+  const focusedAnswers = ranked
+    .map(({ item }) => resolveFaqTemplate(item.answer_template_ko, placeholderMap))
+    .map((resolved) => extractRelevantAnswerChunks(resolved, question, 2))
+    .filter((answer) => answer.length > 0);
+
+  const uniqueAnswers = Array.from(new Set(focusedAnswers)).slice(0, 2);
+  if (uniqueAnswers.length === 0) {
+    return {
+      route: `/faq?q=${encodeURIComponent(question)}`,
+      reply: "관련 FAQ를 찾았지만 답변을 구성하지 못했습니다. 화면에서 상세 내용을 확인해 주세요.",
+    };
+  }
+
+  const reply =
+    uniqueAnswers.length === 1 ? uniqueAnswers[0] : `${uniqueAnswers[0]} 추가로, ${uniqueAnswers[1]}`;
+
   return {
     route: `/faq?q=${encodeURIComponent(question)}`,
-    reply: resolveFaqTemplate(items[0].answer_template_ko, placeholderMap),
+    reply,
   };
 }
 
@@ -237,7 +290,7 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
   if (action === "home") {
     return {
       route: "/",
-      reply: "메인 화면으로 이동했습니다. 궁금한 내용을 말씀해 주세요.",
+      reply: "메인 화면으로 이동했습니다. 원하는 내용을 말씀해 주세요.",
     };
   }
 
@@ -261,9 +314,7 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
     }
     return {
       route: "/dining",
-      reply: `다이닝은 총 ${items.length}곳입니다. 대표 장소는 ${pickTopLabels(
-        items.map((item) => item.venue_name_kr ?? item.dining_id),
-      )}입니다.`,
+      reply: `다이닝은 총 ${items.length}곳입니다. 대표 장소는 ${pickTopLabels(items.map((item) => item.venue_name_kr ?? item.dining_id))}입니다.`,
     };
   }
 
@@ -275,9 +326,7 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
     }
     return {
       route: "/facilities",
-      reply: `부대시설은 총 ${items.length}개이며 ${pickTopLabels(
-        items.map((item) => item.facility_name ?? item.facility_id),
-      )} 등을 이용할 수 있습니다.`,
+      reply: `부대시설은 총 ${items.length}개이며 ${pickTopLabels(items.map((item) => item.facility_name ?? item.facility_id))} 순으로 확인하실 수 있습니다.`,
     };
   }
 
@@ -289,9 +338,7 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
     }
     return {
       route: "/services",
-      reply: `호텔 서비스는 총 ${items.length}개이며 ${pickTopLabels(
-        items.map((item) => item.service_name ?? item.service_id),
-      )} 등을 제공하고 있습니다.`,
+      reply: `호텔 서비스는 총 ${items.length}개이며 ${pickTopLabels(items.map((item) => item.service_name ?? item.service_id))} 등을 제공합니다.`,
     };
   }
 
@@ -304,9 +351,7 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
     const recommendedCount = items.filter((item) => item.recommended_yn).length;
     return {
       route: "/transport",
-      reply: `교통 안내는 총 ${items.length}건입니다. 추천 경로는 ${recommendedCount}건이며 ${pickTopLabels(
-        items.map((item) => item.origin_name ?? item.transport_id),
-      )} 정보를 확인할 수 있습니다.`,
+      reply: `교통 안내는 총 ${items.length}건입니다. 추천 경로는 ${recommendedCount}건이며 ${pickTopLabels(items.map((item) => item.origin_name ?? item.transport_id))} 기준으로 볼 수 있습니다.`,
     };
   }
 
@@ -318,9 +363,7 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
     }
     return {
       route: "/nearby",
-      reply: `주변 추천 장소는 총 ${items.length}곳이며 ${pickTopLabels(
-        items.map((item) => item.name_kr ?? item.place_id),
-      )} 등을 확인할 수 있습니다.`,
+      reply: `주변 추천 장소는 총 ${items.length}곳이며 ${pickTopLabels(items.map((item) => item.name_kr ?? item.place_id))}부터 확인하실 수 있습니다.`,
     };
   }
 
@@ -332,9 +375,7 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
     }
     return {
       route: "/emergency",
-      reply: `응급 연락처는 총 ${items.length}건이며 ${pickTopLabels(
-        items.map((item) => item.contact_name ?? item.emergency_id),
-      )} 정보를 확인할 수 있습니다.`,
+      reply: `응급 연락처는 총 ${items.length}건이며 ${pickTopLabels(items.map((item) => item.contact_name ?? item.emergency_id))} 정보를 먼저 확인하실 수 있습니다.`,
     };
   }
 
@@ -344,14 +385,12 @@ async function buildVoiceResult(question: string): Promise<VoiceResult> {
     if (items.length === 0) {
       return {
         route: "/notices",
-        reply: "현재 적용 중인 공지사항은 없습니다.",
+        reply: "현재 적용 중인 공지사항이 없습니다.",
       };
     }
     return {
       route: "/notices",
-      reply: `현재 공지사항은 ${items.length}건이며 ${pickTopLabels(
-        items.map((item) => item.title ?? item.notice_id),
-      )} 순으로 확인할 수 있습니다.`,
+      reply: `현재 공지사항은 ${items.length}건이며 ${pickTopLabels(items.map((item) => item.title ?? item.notice_id))} 순으로 확인할 수 있습니다.`,
     };
   }
 
@@ -369,7 +408,7 @@ export function VoiceConcierge() {
   const [typedQuestion, setTypedQuestion] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const pendingTranscriptRef = useRef("");
   const speechPrimedRef = useRef(false);
 
@@ -379,7 +418,10 @@ export function VoiceConcierge() {
     }
 
     const hasRecognition = Boolean(
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition,
+      (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .SpeechRecognition ||
+        (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+          .webkitSpeechRecognition,
     );
     const hasSynthesis = "speechSynthesis" in window;
     if (!hasRecognition || !hasSynthesis) {
@@ -402,7 +444,7 @@ export function VoiceConcierge() {
 
   const statusText = useMemo(() => {
     if (!isSupported) {
-      return "현재 브라우저는 음성 기능을 지원하지 않습니다.";
+      return "현재 브라우저에서는 음성 기능을 지원하지 않습니다.";
     }
     if (isListening) {
       return "듣는 중입니다. 질문을 말씀해 주세요.";
@@ -455,12 +497,23 @@ export function VoiceConcierge() {
 
   const startListening = useCallback(() => {
     if (!isSupported || typeof window === "undefined") {
-      setErrorMessage("이 환경에서는 음성 인식을 사용할 수 없습니다.");
+      setErrorMessage("현재 환경에서는 음성 인식을 사용할 수 없습니다.");
       return;
     }
 
+    type BrowserWindow = Window & typeof globalThis & {
+      SpeechRecognition?: {
+        new (): SpeechRecognitionLike;
+      };
+      webkitSpeechRecognition?: {
+        new (): SpeechRecognitionLike;
+      };
+    };
+
+    const browserWindow = window as BrowserWindow;
     const RecognitionConstructor =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
+
     if (!RecognitionConstructor) {
       setErrorMessage("음성 인식 기능을 찾지 못했습니다.");
       return;
@@ -507,8 +560,8 @@ export function VoiceConcierge() {
         setErrorMessage("음성 인식에 실패했습니다. 다시 시도해 주세요.");
       };
 
-      recognition.onresult = (event: any) => {
-        const transcript = event?.results?.[0]?.[0]?.transcript ?? "";
+      recognition.onresult = (event: SpeechRecognitionEventLike) => {
+        const transcript = event.results?.[0]?.[0]?.transcript ?? "";
         if (transcript.length > 0) {
           pendingTranscriptRef.current = transcript;
           try {
@@ -560,7 +613,7 @@ export function VoiceConcierge() {
           onClick={isListening ? stopListening : startListening}
           disabled={!isSupported || isLoading}
         >
-          {isListening ? "듣기 중지" : "음성 질문"}
+          {isListening ? "듣는 중지" : "음성 질문"}
         </button>
         <button className="voice-button ghost" type="button" onClick={() => playReply(lastAnswer)}>
           답변 다시 듣기
@@ -576,7 +629,7 @@ export function VoiceConcierge() {
           type="text"
           value={typedQuestion}
           onChange={(event) => setTypedQuestion(event.target.value)}
-          placeholder="마이크 사용이 어려우면 질문을 입력하세요."
+          placeholder="마이크 대신 질문을 입력해도 됩니다."
           disabled={isLoading}
         />
         <button

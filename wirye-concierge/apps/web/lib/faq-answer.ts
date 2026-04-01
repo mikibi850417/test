@@ -71,15 +71,65 @@ export type FaqTemplateContext = {
   emergency?: EmergencyPayload | null;
 };
 
+export type FaqSearchItem = {
+  intent_id: string;
+  question_example_ko?: string | null;
+  question_example_en?: string | null;
+  answer_template_ko?: string | null;
+  answer_template_en?: string | null;
+};
+
+export type RankedFaqMatch<T extends FaqSearchItem> = {
+  item: T;
+  score: number;
+  matchedChunk: string;
+};
+
+type RankOptions = {
+  maxResults?: number;
+  minScore?: number;
+};
+
 const STATIC_PLACEHOLDER_MAP: Record<string, string> = {
-  "hotel_master.check_out_conflict_note": "프런트 데스크에서 최신 정보",
-  "hotel_master.luggage_storage_note": "짐은 체크인 전후로 프런트 데스크 보관 요청이 가능합니다.",
+  "hotel_master.check_out_conflict_note": "운영 상황에 따라 변동될 수 있으니 프런트에 확인해 주세요",
+  "hotel_master.luggage_storage_note": "체크아웃 이후에도 프런트에서 짐 보관을 도와드립니다",
   "hotel_policies.POLICY_LATE_CHECKIN.policy_detail_ko":
-    "22:00 이후 도착 예정이면 호텔로 사전 연락이 필요합니다.",
+    "22시 이후 도착 예정이면 호텔로 사전 연락이 필요합니다",
   "hotel_policies.POLICY_POOL_RULES.policy_detail_ko":
-    "실내수영복, 수모, 수경 착용이 필요하며 외부 음식물과 물놀이 용품 반입은 제한됩니다.",
+    "수영장 이용 시 수모 착용이 필요하며 외부 음식과 유리 용기 반입은 제한됩니다",
   "hotel_dining.DINING_BREAKFAST.breakfast_free_policy": "48개월 미만 무료",
 };
+
+const NON_TEXT_REGEX = /[^\p{L}\p{N}\s]/gu;
+const SPACE_REGEX = /\s+/g;
+const SENTENCE_SPLIT_REGEX = /[\r\n]+|(?<=[.!?。！？])\s+/g;
+const STOP_WORDS = new Set([
+  "은",
+  "는",
+  "이",
+  "가",
+  "을",
+  "를",
+  "에",
+  "의",
+  "도",
+  "좀",
+  "좀요",
+  "해주세요",
+  "해줘",
+  "알려줘",
+  "알려주세요",
+  "what",
+  "is",
+  "are",
+  "the",
+  "a",
+  "an",
+  "to",
+  "for",
+  "of",
+  "and",
+]);
 
 function toText(value: string | number | null | undefined): string {
   if (value === null || value === undefined) {
@@ -96,7 +146,11 @@ function toText(value: string | number | null | undefined): string {
   return value.trim();
 }
 
-function setValue(target: Record<string, string>, key: string, value: string | number | null | undefined) {
+function setValue(
+  target: Record<string, string>,
+  key: string,
+  value: string | number | null | undefined,
+) {
   const text = toText(value);
   if (text.length > 0) {
     target[key] = text;
@@ -107,10 +161,92 @@ function ensurePunctuation(text: string): string {
   if (text.length === 0) {
     return text;
   }
-  if (/[.!?]$/.test(text)) {
+  if (/[.!?。！？]$/.test(text)) {
     return text;
   }
   return `${text}.`;
+}
+
+function normalizeForMatch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(NON_TEXT_REGEX, " ")
+    .replace(SPACE_REGEX, " ")
+    .trim();
+}
+
+function tokenize(text: string): string[] {
+  const normalized = normalizeForMatch(text);
+  if (!normalized) {
+    return [];
+  }
+
+  const tokens = normalized
+    .split(" ")
+    .filter((token) => token.length > 1)
+    .filter((token) => !STOP_WORDS.has(token));
+
+  return Array.from(new Set(tokens));
+}
+
+function splitToChunks(text: string): string[] {
+  return text
+    .split(SENTENCE_SPLIT_REGEX)
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 0);
+}
+
+function scoreChunk(question: string, chunk: string): number {
+  const normalizedQuestion = normalizeForMatch(question);
+  const normalizedChunk = normalizeForMatch(chunk);
+
+  if (!normalizedQuestion || !normalizedChunk) {
+    return 0;
+  }
+
+  const questionTokens = tokenize(normalizedQuestion);
+  const chunkTokens = new Set(tokenize(normalizedChunk));
+  let score = 0;
+
+  if (normalizedChunk.includes(normalizedQuestion)) {
+    score += 30;
+  }
+
+  let hitCount = 0;
+  for (const token of questionTokens) {
+    if (!chunkTokens.has(token)) {
+      continue;
+    }
+    hitCount += 1;
+    score += Math.min(6, token.length);
+  }
+
+  if (questionTokens.length > 0) {
+    const coverage = hitCount / questionTokens.length;
+    score += Math.round(coverage * 20);
+  }
+
+  return score;
+}
+
+function pickTopScoredChunks(question: string, chunks: string[], maxChunks: number): string[] {
+  if (chunks.length <= 1 || maxChunks <= 0) {
+    return chunks.slice(0, Math.max(0, maxChunks));
+  }
+
+  const scored = chunks
+    .map((chunk, index) => ({ chunk, index, score: scoreChunk(question, chunk) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, maxChunks)
+    .sort((a, b) => a.index - b.index)
+    .map((entry) => entry.chunk);
+
+  if (scored.length > 0) {
+    return scored;
+  }
+
+  return chunks.slice(0, 1);
 }
 
 export function buildFaqPlaceholderMap(context: FaqTemplateContext): Record<string, string> {
@@ -173,7 +309,7 @@ export function resolveFaqTemplate(
   placeholderMap: Record<string, string>,
 ): string {
   if (!template || template.trim().length === 0) {
-    return "안내 가능한 답변이 없습니다.";
+    return "안내 가능한 답변이 아직 없습니다.";
   }
 
   let unresolvedCount = 0;
@@ -189,15 +325,106 @@ export function resolveFaqTemplate(
 
   const cleaned = ensurePunctuation(
     replaced
-      .replace(/\s{2,}/g, " ")
-      .replace(/\s+([,.!?])/g, "$1")
-      .replace(/현장 확인 필요\s+현장 확인 필요/g, "현장 확인 필요")
+      .replace(SPACE_REGEX, " ")
+      .replace(/\s+([,.!?。！？])/g, "$1")
+      .replace(/(현장 확인 필요\s+){2,}/g, "현장 확인 필요 ")
       .trim(),
   );
 
   if (unresolvedCount > 0) {
-    return `${cleaned} 일부 항목은 프런트 데스크에서 최신 정보를 확인해 주세요.`;
+    return `${cleaned} 일부 정보는 실시간 확인이 필요합니다.`;
   }
 
   return cleaned;
+}
+
+export function rankFaqByQuestion<T extends FaqSearchItem>(
+  items: T[],
+  question: string,
+  options?: RankOptions,
+): RankedFaqMatch<T>[] {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const maxResults = options?.maxResults ?? 3;
+  const minScore = options?.minScore ?? 12;
+  const normalizedQuestion = normalizeForMatch(question);
+
+  if (!normalizedQuestion) {
+    return items.slice(0, maxResults).map((item) => ({
+      item,
+      score: 0,
+      matchedChunk: "",
+    }));
+  }
+
+  const ranked = items
+    .map((item) => {
+      const searchable = [
+        item.question_example_ko,
+        item.question_example_en,
+        item.answer_template_ko,
+        item.answer_template_en,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const chunks = splitToChunks(searchable);
+      if (chunks.length === 0) {
+        return null;
+      }
+
+      let bestScore = 0;
+      let bestChunk = "";
+      for (const chunk of chunks) {
+        const chunkScore = scoreChunk(normalizedQuestion, chunk);
+        if (chunkScore <= bestScore) {
+          continue;
+        }
+        bestScore = chunkScore;
+        bestChunk = chunk;
+      }
+
+      if (bestScore <= 0) {
+        return null;
+      }
+
+      return {
+        item,
+        score: bestScore,
+        matchedChunk: bestChunk,
+      };
+    })
+    .filter((entry): entry is RankedFaqMatch<T> => entry !== null)
+    .sort((a, b) => b.score - a.score);
+
+  const filtered = ranked.filter((entry) => entry.score >= minScore);
+  if (filtered.length > 0) {
+    return filtered.slice(0, maxResults);
+  }
+
+  return ranked.slice(0, maxResults);
+}
+
+export function extractRelevantAnswerChunks(
+  answer: string | null | undefined,
+  question: string,
+  maxChunks = 2,
+): string {
+  if (!answer) {
+    return "";
+  }
+
+  const chunks = splitToChunks(answer);
+  if (chunks.length === 0) {
+    return "";
+  }
+
+  const selected = pickTopScoredChunks(question, chunks, maxChunks);
+  if (selected.length === 0) {
+    return "";
+  }
+
+  return ensurePunctuation(selected.join(" ").replace(SPACE_REGEX, " ").trim());
 }

@@ -20,15 +20,20 @@ export default async function DiningPage() {
     <main>
       <section className="card card-hero">
         <p className="eyebrow">Dining & Lounge</p>
-        <h1 className="page-title">식음 안내</h1>
-        <p className="page-subtitle">레스토랑, 라운지, 조식 운영 정보를 확인하세요.</p>
+        <h1 className="page-title">다이닝 안내</h1>
+        <p className="page-subtitle">
+          조식, 레스토랑, 라운지 운영 시간과 위치, 요금 정보를 확인해 보세요.
+        </p>
       </section>
 
       <section className="list">
-        {items.length === 0 ? <div className="list-item">현재 제공 가능한 식음 정보가 없습니다.</div> : null}
+        {items.length === 0 ? <div className="list-item empty-state">현재 제공 가능한 다이닝 정보가 없습니다.</div> : null}
         {items.map((item) => (
           <article className="list-item" key={item.dining_id}>
-            <h3>{item.venue_name_kr ?? item.dining_id}</h3>
+            <div className="list-item-head">
+              <h3>{item.venue_name_kr ?? item.dining_id}</h3>
+              <span className="chip">Dining</span>
+            </div>
             <div className="detail-grid">
               <p>
                 <strong>위치</strong>
@@ -39,7 +44,7 @@ export default async function DiningPage() {
                 <span>{item.operating_hours ?? "-"}</span>
               </p>
               <p>
-                <strong>요금/메모</strong>
+                <strong>요금안내</strong>
                 <span>{item.price_info ?? "-"}</span>
               </p>
             </div>

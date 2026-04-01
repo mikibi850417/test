@@ -1,12 +1,19 @@
 import Link from "next/link";
 
-import { buildFaqPlaceholderMap, resolveFaqTemplate } from "@/lib/faq-answer";
+import {
+  buildFaqPlaceholderMap,
+  extractRelevantAnswerChunks,
+  rankFaqByQuestion,
+  resolveFaqTemplate,
+} from "@/lib/faq-answer";
 import { fetchPublicPath } from "@/lib/public-api";
 
 type FaqItem = {
   intent_id: string;
   question_example_ko?: string | null;
+  question_example_en?: string | null;
   answer_template_ko?: string | null;
+  answer_template_en?: string | null;
 };
 
 type FaqPayload = {
@@ -114,10 +121,18 @@ export default async function FaqPage({
     emergency: emergencyData,
   });
 
-  const items = (faqData?.items ?? []).map((item) => ({
-    ...item,
-    resolvedAnswer: resolveFaqTemplate(item.answer_template_ko, placeholderMap),
-  }));
+  const rankedItems = rankFaqByQuestion(faqData?.items ?? [], query, {
+    maxResults: 8,
+    minScore: 8,
+  });
+
+  const items = rankedItems.map(({ item }) => {
+    const resolved = resolveFaqTemplate(item.answer_template_ko, placeholderMap);
+    return {
+      ...item,
+      resolvedAnswer: extractRelevantAnswerChunks(resolved, query, 2),
+    };
+  });
 
   return (
     <main>
@@ -128,10 +143,13 @@ export default async function FaqPage({
       </section>
 
       <section className="list">
-        {items.length === 0 ? <div className="list-item">검색 결과가 없습니다.</div> : null}
+        {items.length === 0 ? <div className="list-item empty-state">검색 결과가 없습니다.</div> : null}
         {items.map((item) => (
           <article className="list-item" key={item.intent_id}>
-            <h3>{item.question_example_ko ?? item.intent_id}</h3>
+            <div className="list-item-head">
+              <h3>{item.question_example_ko ?? item.intent_id}</h3>
+              <span className="chip">FAQ Match</span>
+            </div>
             <p>{item.resolvedAnswer}</p>
           </article>
         ))}

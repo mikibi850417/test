@@ -74,7 +74,7 @@ export function KioskRuntime({ children }: { children: ReactNode }) {
     <>
       {!online ? (
         <div className="kiosk-offline-banner" role="status" aria-live="polite">
-          네트워크 연결이 일시적으로 끊겼습니다. 마지막으로 받은 정보를 기준으로 화면이 유지됩니다.
+          네트워크 연결이 일시적으로 끊겼습니다. 마지막으로 받은 데이터를 기준으로 화면을 유지합니다.
         </div>
       ) : null}
       {children}

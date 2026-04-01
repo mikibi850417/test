@@ -22,13 +22,18 @@ export default async function HotelPage() {
       <section className="card card-hero">
         <p className="eyebrow">Hotel Information</p>
         <h1 className="page-title">호텔 안내</h1>
-        <p className="page-subtitle">기본 정보, 연락처, 체크인/체크아웃 시간을 안내합니다.</p>
+        <p className="page-subtitle">
+          기본 정보, 대표 연락처, 체크인/체크아웃 시간을 한 번에 확인하실 수 있습니다.
+        </p>
       </section>
 
       <section className="list">
         <article className="list-item">
-          <h3>{hotel?.name_kr ?? "호텔 정보가 없습니다."}</h3>
-          <p className="muted">{hotel?.name_en ?? "-"}</p>
+          <div className="list-item-head">
+            <h3>{hotel?.name_kr ?? "호텔 정보가 없습니다."}</h3>
+            <span className="chip">Front Desk</span>
+          </div>
+          <p className="muted">{hotel?.name_en ?? "영문명 미등록"}</p>
           <div className="detail-grid">
             <p>
               <strong>주소</strong>

@@ -34,6 +34,7 @@ export default async function NearbyDetailPage({
   const detail = await fetchPublicPath<DetailPayload>(`/nearby-places/${placeId}`);
   const routes = await fetchPublicPath<RoutePayload>(`/routes/${placeId}`);
   const item = detail?.item;
+  const routeItems = routes?.items ?? [];
 
   return (
     <main>
@@ -47,9 +48,13 @@ export default async function NearbyDetailPage({
 
       <section className="list">
         <article className="list-item">
+          <div className="list-item-head">
+            <h3>장소 정보</h3>
+            <span className="chip">Detail</span>
+          </div>
           <div className="detail-grid">
             <p>
-              <strong>간단 소개</strong>
+              <strong>간단소개</strong>
               <span>{item?.short_desc ?? "-"}</span>
             </p>
             <p>
@@ -71,14 +76,19 @@ export default async function NearbyDetailPage({
           </div>
         </article>
 
-        {(routes?.items ?? []).map((route) => (
+        {routeItems.length === 0 ? (
+          <article className="list-item empty-state">등록된 이동 경로 정보가 없습니다.</article>
+        ) : null}
+
+        {routeItems.map((route) => (
           <article className="list-item" key={route.route_id}>
-            <h3>{route.transport_mode ?? "경로 안내"}</h3>
+            <div className="list-item-head">
+              <h3>{route.transport_mode ?? "이동 경로"}</h3>
+              <span className="chip">Route</span>
+            </div>
             <p className="muted">
               예상 소요:{" "}
-              {typeof route.estimated_duration_min === "number"
-                ? `${route.estimated_duration_min}분`
-                : "-"}
+              {typeof route.estimated_duration_min === "number" ? `${route.estimated_duration_min}분` : "-"}
             </p>
             <ol className="step-list">
               {(route.steps ?? []).map((step, index) => (

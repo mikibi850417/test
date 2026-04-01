@@ -22,14 +22,19 @@ export default async function NearbyPage() {
       <section className="card card-hero">
         <p className="eyebrow">Nearby Curations</p>
         <h1 className="page-title">주변 추천</h1>
-        <p className="page-subtitle">호텔 근처의 관광, 쇼핑, 생활 편의 장소를 안내합니다.</p>
+        <p className="page-subtitle">
+          호텔 근처 관광, 쇼핑, 맛집 장소를 거리 기준으로 빠르게 확인해 보세요.
+        </p>
       </section>
 
       <section className="list">
-        {items.length === 0 ? <div className="list-item">현재 제공 가능한 주변 정보가 없습니다.</div> : null}
+        {items.length === 0 ? <div className="list-item empty-state">현재 제공 가능한 주변 정보가 없습니다.</div> : null}
         {items.map((item) => (
           <article className="list-item" key={item.place_id}>
-            <h3>{item.name_kr ?? item.place_id}</h3>
+            <div className="list-item-head">
+              <h3>{item.name_kr ?? item.place_id}</h3>
+              <span className="chip">Nearby</span>
+            </div>
             <div className="detail-grid">
               <p>
                 <strong>카테고리</strong>
@@ -46,7 +51,7 @@ export default async function NearbyPage() {
                 </span>
               </p>
               <p>
-                <strong>도보 소요</strong>
+                <strong>도보시간</strong>
                 <span>
                   {typeof item.walk_minutes_display === "number" ? `${item.walk_minutes_display}분` : "-"}
                 </span>

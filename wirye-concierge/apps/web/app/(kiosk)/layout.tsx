@@ -6,7 +6,7 @@ import { VoiceConcierge } from "@/components/voice-concierge";
 
 const quickLinks = [
   { href: "/hotel", label: "호텔 안내" },
-  { href: "/dining", label: "식음" },
+  { href: "/dining", label: "다이닝" },
   { href: "/facilities", label: "부대시설" },
   { href: "/services", label: "서비스" },
   { href: "/transport", label: "교통" },
@@ -22,12 +22,13 @@ export default function KioskLayout({ children }: { children: ReactNode }) {
           <Link className="kiosk-brand" href="/">
             <span className="kiosk-brand-mark">WM</span>
             <span>
-              <strong>Militopia Concierge</strong>
-              <small>Luxury Lobby Guide</small>
+              <strong>WIRYE CONCIERGE</strong>
+              <small>Militopia Luxury Lobby</small>
             </span>
           </Link>
 
-          <nav className="kiosk-quick-nav" aria-label="Quick navigation">
+          <nav className="kiosk-quick-nav" aria-label="빠른 이동 메뉴">
+            <span className="kiosk-status">Live Concierge</span>
             {quickLinks.map((link) => (
               <Link key={link.href} className="kiosk-quick-link" href={link.href}>
                 {link.label}

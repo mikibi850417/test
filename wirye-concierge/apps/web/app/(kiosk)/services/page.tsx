@@ -22,14 +22,19 @@ export default async function ServicesPage() {
       <section className="card card-hero">
         <p className="eyebrow">Guest Services</p>
         <h1 className="page-title">호텔 서비스</h1>
-        <p className="page-subtitle">투숙객 편의 서비스와 운영 시간을 안내합니다.</p>
+        <p className="page-subtitle">
+          객실 서비스, 컨시어지, 하우스키핑 등 요청 가능한 서비스를 확인하실 수 있습니다.
+        </p>
       </section>
 
       <section className="list">
-        {items.length === 0 ? <div className="list-item">현재 제공 가능한 서비스 정보가 없습니다.</div> : null}
+        {items.length === 0 ? <div className="list-item empty-state">현재 제공 가능한 서비스 정보가 없습니다.</div> : null}
         {items.map((item) => (
           <article className="list-item" key={item.service_id}>
-            <h3>{item.service_name ?? item.service_id}</h3>
+            <div className="list-item-head">
+              <h3>{item.service_name ?? item.service_id}</h3>
+              <span className="chip">Service</span>
+            </div>
             <div className="detail-grid">
               <p>
                 <strong>분류</strong>
@@ -44,7 +49,7 @@ export default async function ServicesPage() {
                 <span>{item.phone ?? "-"}</span>
               </p>
               <p>
-                <strong>요금 안내</strong>
+                <strong>요금안내</strong>
                 <span>{item.fee_note ?? "-"}</span>
               </p>
             </div>

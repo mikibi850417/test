@@ -22,14 +22,19 @@ export default async function FacilitiesPage() {
       <section className="card card-hero">
         <p className="eyebrow">Facility Guide</p>
         <h1 className="page-title">부대시설</h1>
-        <p className="page-subtitle">피트니스, 수영장, 골프, 사우나 시설 이용 정보를 확인하세요.</p>
+        <p className="page-subtitle">
+          피트니스, 수영장, 사우나 등 부대시설의 위치와 이용 정보를 안내합니다.
+        </p>
       </section>
 
       <section className="list">
-        {items.length === 0 ? <div className="list-item">현재 제공 가능한 부대시설 정보가 없습니다.</div> : null}
+        {items.length === 0 ? <div className="list-item empty-state">현재 제공 가능한 부대시설 정보가 없습니다.</div> : null}
         {items.map((item) => (
           <article className="list-item" key={item.facility_id}>
-            <h3>{item.facility_name ?? item.facility_id}</h3>
+            <div className="list-item-head">
+              <h3>{item.facility_name ?? item.facility_id}</h3>
+              <span className="chip">Facility</span>
+            </div>
             <div className="detail-grid">
               <p>
                 <strong>분류</strong>
