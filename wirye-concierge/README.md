@@ -77,6 +77,12 @@ docker compose exec api python -m app.tasks.import_dataset --file /app/data/impo
   - `/api/v1/public/hotels/{hotel_id}/notices`
   - `/api/v1/public/hotels/{hotel_id}/faq/search`
   - `/api/v1/public/hotels/{hotel_id}/snapshot`
+
+## Concierge Web APIs (Next.js)
+
+- `/api/concierge/chat` (POST): Gemini/Fallback 답변 + intent + suggestions + handoff 상태
+- `/api/concierge/inbox` (GET/POST): 핸드오프 운영 인박스 조회/생성
+- `/api/concierge/inbox/{id}` (PATCH): 인박스 상태/담당자/태그/내부메모 업데이트
 - Admin:
   - `/api/v1/admin/auth/login`
   - `/api/v1/admin/me`

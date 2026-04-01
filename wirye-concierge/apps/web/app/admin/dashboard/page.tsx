@@ -11,6 +11,7 @@ type DashboardState = {
   publishes: number;
   devices: number;
   imports: number;
+  conciergeOpen: number;
 };
 
 export default function AdminDashboardPage() {
@@ -25,12 +26,20 @@ export default function AdminDashboardPage() {
         return;
       }
       try {
-        const [me, conflicts, publishes, devices, imports] = await Promise.all([
+        const [me, conflicts, publishes, devices, imports, conciergeInbox] = await Promise.all([
           adminFetch<{ email: string }>("/api/v1/admin/me", token),
           adminFetch<Array<unknown>>("/api/v1/admin/conflicts", token),
           adminFetch<Array<unknown>>("/api/v1/admin/publish/versions", token),
           adminFetch<Array<unknown>>("/api/v1/admin/devices", token),
           adminFetch<Array<unknown>>("/api/v1/admin/imports", token),
+          fetch("/api/concierge/inbox?status=open&limit=200", { cache: "no-store" }).then(
+            async (response) => {
+              if (!response.ok) {
+                return { items: [] as unknown[] };
+              }
+              return (await response.json()) as { items: unknown[] };
+            },
+          ),
         ]);
         setState({
           email: me.email,
@@ -38,6 +47,7 @@ export default function AdminDashboardPage() {
           publishes: publishes.length,
           devices: devices.length,
           imports: imports.length,
+          conciergeOpen: conciergeInbox.items.length,
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : "대시보드 로딩 실패");
@@ -77,9 +87,17 @@ export default function AdminDashboardPage() {
             <h3>Import Jobs</h3>
             <p>{state.imports}</p>
           </div>
+          <div className="list-item">
+            <h3>Concierge Inbox(Open)</h3>
+            <p>{state.conciergeOpen}</p>
+          </div>
         </div>
       ) : null}
 
+      <div style={{ height: "0.8rem" }} />
+      <Link className="button-inline button" href="/admin/concierge-inbox">
+        컨시어지 인박스 열기
+      </Link>
       <div style={{ height: "0.8rem" }} />
       <Link className="button-ghost" href="/admin">
         관리자 홈

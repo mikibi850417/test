@@ -115,6 +115,12 @@ type GeminiApiResponse = {
   }>;
 };
 
+export type ConciergeIntent = {
+  action: VoiceAction;
+  confidence: number;
+  matchedBy: "keyword" | "llm" | "fallback";
+};
+
 export type ConciergeResponse = {
   reply: string;
   tts: string;
@@ -122,6 +128,13 @@ export type ConciergeResponse = {
   chunks: string[];
   provider: "gemini" | "fallback";
   reason?: string;
+  intent: ConciergeIntent;
+  suggestions: string[];
+  handoff: {
+    requested: boolean;
+    reason?: string;
+    itemId?: string;
+  };
 };
 
 const SPACE_REGEX = /\s+/g;
@@ -158,6 +171,31 @@ const ROUTE_ALIAS_TO_ACTION: Record<string, VoiceAction> = {
   notice: "notices",
   faq: "faq",
 };
+
+const SUGGESTION_BY_ACTION: Record<VoiceAction, string[]> = {
+  home: ["체크인 시간 알려줘", "조식 운영 시간 알려줘", "주변 맛집 추천해줘"],
+  hotel: ["체크인 시간은?", "체크아웃 시간은?", "대표 전화번호 알려줘"],
+  dining: ["조식 가격 알려줘", "레스토랑 운영 시간은?", "바 이용 가능해?"],
+  facilities: ["수영장 운영 시간은?", "피트니스 위치는?", "사우나 요금 있어?"],
+  services: ["룸서비스 가능 시간은?", "짐 보관 가능해?", "세탁 서비스 있어?"],
+  transport: ["공항 가는 방법 알려줘", "지하철역까지 얼마나 걸려?", "택시 이동 시간은?"],
+  nearby: ["근처 관광지 추천해줘", "도보 10분 이내 장소 알려줘", "가까운 카페 추천해줘"],
+  emergency: ["가까운 병원 알려줘", "24시간 약국 있어?", "비상 연락처 알려줘"],
+  notices: ["현재 공지사항 알려줘", "운영 변경사항 있어?", "오늘 이벤트 있어?"],
+  faq: ["체크아웃 시간 알려줘", "주차 안내해줘", "프런트 연락처 알려줘"],
+};
+
+const HANDOFF_KEYWORDS = [
+  "직원",
+  "상담원",
+  "사람 연결",
+  "매니저",
+  "프런트 연결",
+  "전화 연결",
+  "human",
+  "agent",
+  "staff",
+];
 
 function normalizeText(input: string): string {
   return input.trim().toLowerCase();
@@ -210,6 +248,31 @@ function detectAction(question: string): VoiceAction {
     return "notices";
   }
   return "faq";
+}
+
+function buildIntent(
+  action: VoiceAction,
+  matchedBy: ConciergeIntent["matchedBy"],
+  confidence: number,
+): ConciergeIntent {
+  const safeConfidence = Math.max(0, Math.min(1, confidence));
+  return {
+    action,
+    matchedBy,
+    confidence: Number(safeConfidence.toFixed(2)),
+  };
+}
+
+function buildSuggestions(action: VoiceAction, question: string): string[] {
+  const normalizedQuestion = normalizeText(question);
+  return SUGGESTION_BY_ACTION[action]
+    .filter((candidate) => normalizeText(candidate) !== normalizedQuestion)
+    .slice(0, 3);
+}
+
+function shouldHandoffByQuestion(question: string): boolean {
+  const normalized = normalizeText(question);
+  return HANDOFF_KEYWORDS.some((keyword) => normalized.includes(keyword));
 }
 
 function pickTopLabels(values: Array<string | null | undefined>, limit = 3): string {
@@ -301,6 +364,15 @@ function normalizeRoute(routeValue: string | null | undefined, action: VoiceActi
     return `/faq?q=${encodeURIComponent(question)}`;
   }
   return ROUTE_BY_ACTION[aliasAction];
+}
+
+function actionFromRoute(route: string): VoiceAction | null {
+  const normalized = route.trim().toLowerCase();
+  if (normalized === "/") {
+    return "home";
+  }
+  const value = normalized.startsWith("/") ? normalized.slice(1) : normalized;
+  return ROUTE_ALIAS_TO_ACTION[value] ?? null;
 }
 
 async function loadFaqItems(question: string): Promise<FaqItem[]> {
@@ -426,9 +498,10 @@ function buildGeminiPrompt(question: string, context: ConciergeContext, action: 
     "데이터에 없는 사실은 추측하지 말고, 정보가 없으면 '현재 등록된 정보에서 확인되지 않습니다. 프런트 데스크로 문의해 주세요.'라고 답하라.",
     "출력은 반드시 JSON 객체 하나만 반환한다.",
     `route 허용값: ${Object.keys(ROUTE_BY_ACTION).join(", ")}`,
-    'JSON 형식: {"answer":"문장","tts":"문장","route":"faq","chunks":["문장1","문장2"]}',
+    'JSON 형식: {"answer":"문장","tts":"문장","route":"faq","chunks":["문장1","문장2"],"suggestions":["추가질문1","추가질문2"]}',
     "answer와 tts는 각각 1~2문장, 최대 220자로 간결하게 작성한다.",
     "chunks는 answer를 1~2개 문장으로 나눈 배열이어야 한다.",
+    "suggestions는 후속 질문 2~3개를 한국어로 제공한다.",
     "문장에 플레이스홀더(예: {{hotel_master.check_out_time}})를 절대 포함하지 마라.",
     "",
     `USER_QUESTION: ${question}`,
@@ -512,6 +585,7 @@ function buildActionSummary(action: VoiceAction, context: ConciergeContext): str
 }
 
 function buildFallbackResponse(question: string, action: VoiceAction, context: ConciergeContext): ConciergeResponse {
+  const suggestions = buildSuggestions(action, question);
   const faqChunks = context.faqHits
     .slice(0, 2)
     .map((hit) => sanitizeText(hit.answer))
@@ -526,6 +600,11 @@ function buildFallbackResponse(question: string, action: VoiceAction, context: C
       chunks: toChunks(replyText, 2),
       provider: "fallback",
       reason: "faq_chunk_fallback",
+      intent: buildIntent(action, "fallback", 0.64),
+      suggestions,
+      handoff: {
+        requested: false,
+      },
     };
   }
 
@@ -540,6 +619,11 @@ function buildFallbackResponse(question: string, action: VoiceAction, context: C
       chunks: toChunks(cleaned, 2),
       provider: "fallback",
       reason: "action_summary_fallback",
+      intent: buildIntent(action, "fallback", 0.58),
+      suggestions,
+      handoff: {
+        requested: false,
+      },
     };
   }
 
@@ -552,6 +636,11 @@ function buildFallbackResponse(question: string, action: VoiceAction, context: C
     chunks: [defaultReply],
     provider: "fallback",
     reason: "default_fallback",
+    intent: buildIntent(action, "fallback", 0.42),
+    suggestions,
+    handoff: {
+      requested: false,
+    },
   };
 }
 
@@ -640,7 +729,18 @@ async function callGemini(
 
     const routeFromModel = parsed && typeof parsed.route === "string" ? parsed.route : null;
     const normalizedRoute = normalizeRoute(routeFromModel, action, question);
+    const routeAction = actionFromRoute(normalizedRoute) ?? action;
     const chunks = chunkRaw.length > 0 ? chunkRaw : toChunks(answer, 2);
+    const suggestionsRaw =
+      parsed && Array.isArray(parsed.suggestions)
+        ? parsed.suggestions
+            .filter((entry): entry is string => typeof entry === "string")
+            .map((entry) => sanitizeText(entry))
+            .filter((entry) => entry.length > 0)
+            .slice(0, 3)
+        : [];
+    const suggestions =
+      suggestionsRaw.length > 0 ? suggestionsRaw : buildSuggestions(routeAction, question);
 
     return {
       reply: answer,
@@ -648,6 +748,11 @@ async function callGemini(
       route: normalizedRoute,
       chunks,
       provider: "gemini",
+      intent: buildIntent(routeAction, "llm", 0.88),
+      suggestions,
+      handoff: {
+        requested: false,
+      },
     };
   } catch {
     return null;
@@ -667,15 +772,57 @@ export async function buildConciergeResponse(rawQuestion: string): Promise<Conci
       chunks: [reply],
       provider: "fallback",
       reason: "empty_question",
+      intent: buildIntent("home", "fallback", 0.2),
+      suggestions: SUGGESTION_BY_ACTION.home.slice(0, 3),
+      handoff: {
+        requested: false,
+      },
     };
   }
 
   const action = detectAction(question);
+  const questionRequestedHandoff = shouldHandoffByQuestion(question);
+
+  if (questionRequestedHandoff) {
+    const reply =
+      "직원 연결 요청으로 접수했습니다. 잠시만 기다려 주세요. 빠르게 도와드릴 수 있도록 상담 인박스에 전달하겠습니다.";
+    return {
+      reply,
+      tts: reply,
+      route: "/services",
+      chunks: toChunks(reply, 2),
+      provider: "fallback",
+      reason: "guest_requested_handoff",
+      intent: buildIntent("services", "keyword", 0.98),
+      suggestions: buildSuggestions("services", question),
+      handoff: {
+        requested: true,
+        reason: "guest_requested_handoff",
+      },
+    };
+  }
+
   const context = await loadConciergeContext(question);
   const llmResult = await callGemini(question, action, context);
   if (llmResult) {
+    if (
+      llmResult.provider === "fallback" &&
+      (llmResult.reason === "default_fallback" || llmResult.reason === "faq_chunk_fallback")
+    ) {
+      llmResult.handoff = {
+        requested: true,
+        reason: llmResult.reason,
+      };
+    }
     return llmResult;
   }
 
-  return buildFallbackResponse(question, action, context);
+  const fallback = buildFallbackResponse(question, action, context);
+  if (fallback.reason === "default_fallback") {
+    fallback.handoff = {
+      requested: true,
+      reason: fallback.reason,
+    };
+  }
+  return fallback;
 }

@@ -30,6 +30,17 @@ type ConciergeApiResponse = {
   route?: string;
   chunks?: string[];
   provider?: "gemini" | "fallback";
+  suggestions?: string[];
+  intent?: {
+    action?: string;
+    confidence?: number;
+    matchedBy?: "keyword" | "llm" | "fallback";
+  };
+  handoff?: {
+    requested?: boolean;
+    reason?: string;
+    itemId?: string;
+  };
 };
 
 type VoiceResult = {
@@ -38,6 +49,25 @@ type VoiceResult = {
   route?: string;
   chunks: string[];
   provider: "gemini" | "fallback";
+  suggestions: string[];
+  intentAction: string;
+  intentConfidence: number;
+  handoffRequested: boolean;
+  handoffReason?: string;
+  handoffItemId?: string;
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  home: "홈",
+  hotel: "호텔안내",
+  dining: "다이닝",
+  facilities: "부대시설",
+  services: "서비스",
+  transport: "교통",
+  nearby: "주변추천",
+  emergency: "응급",
+  notices: "공지",
+  faq: "FAQ",
 };
 
 function pickSpeechVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
@@ -112,6 +142,23 @@ async function requestConcierge(question: string): Promise<VoiceResult> {
         .map((chunk) => chunk.trim())
         .filter((chunk) => chunk.length > 0)
     : [];
+  const suggestions = Array.isArray(payload.suggestions)
+    ? payload.suggestions
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0)
+        .slice(0, 3)
+    : [];
+  const intentAction =
+    typeof payload.intent?.action === "string" && payload.intent.action.trim().length > 0
+      ? payload.intent.action.trim()
+      : "faq";
+  const intentConfidenceRaw = Number(payload.intent?.confidence ?? 0);
+  const intentConfidence =
+    Number.isFinite(intentConfidenceRaw) && intentConfidenceRaw >= 0
+      ? Math.min(1, intentConfidenceRaw)
+      : 0;
+  const handoffRequested = payload.handoff?.requested === true;
 
   return {
     reply,
@@ -119,6 +166,12 @@ async function requestConcierge(question: string): Promise<VoiceResult> {
     route: payload.route,
     chunks,
     provider: payload.provider ?? "fallback",
+    suggestions,
+    intentAction,
+    intentConfidence,
+    handoffRequested,
+    handoffReason: payload.handoff?.reason,
+    handoffItemId: payload.handoff?.itemId,
   };
 }
 
@@ -132,8 +185,13 @@ export function VoiceConcierge() {
   const [lastAnswer, setLastAnswer] = useState("음성 질문 버튼을 누르면 안내를 시작합니다.");
   const [lastChunks, setLastChunks] = useState<string[]>([]);
   const [lastProvider, setLastProvider] = useState<"gemini" | "fallback">("fallback");
+  const [lastSuggestions, setLastSuggestions] = useState<string[]>([]);
+  const [lastIntentAction, setLastIntentAction] = useState("faq");
+  const [lastIntentConfidence, setLastIntentConfidence] = useState(0);
+  const [lastHandoffItemId, setLastHandoffItemId] = useState("");
   const [typedQuestion, setTypedQuestion] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const pendingTranscriptRef = useRef("");
@@ -201,6 +259,7 @@ export function VoiceConcierge() {
       }
 
       setErrorMessage("");
+      setInfoMessage("");
       setIsLoading(true);
       setLastQuestion(question);
 
@@ -212,12 +271,26 @@ export function VoiceConcierge() {
         setLastAnswer(result.reply);
         setLastChunks(result.chunks);
         setLastProvider(result.provider);
+        setLastSuggestions(result.suggestions);
+        setLastIntentAction(result.intentAction);
+        setLastIntentConfidence(result.intentConfidence);
+        setLastHandoffItemId(result.handoffItemId ?? "");
+        if (result.handoffRequested) {
+          setInfoMessage(
+            `직원 연결 요청이 접수되었습니다.${result.handoffItemId ? ` (티켓: ${result.handoffItemId})` : ""}`,
+          );
+        }
         playReply(result.tts);
       } catch {
         const fallback = "일시적으로 답변을 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.";
         setLastAnswer(fallback);
         setLastChunks([fallback]);
         setLastProvider("fallback");
+        setLastSuggestions([]);
+        setLastIntentAction("faq");
+        setLastIntentConfidence(0);
+        setLastHandoffItemId("");
+        setInfoMessage("");
         playReply(fallback);
       } finally {
         setIsLoading(false);
@@ -264,6 +337,7 @@ export function VoiceConcierge() {
 
     stopSpeaking();
     setErrorMessage("");
+    setInfoMessage("");
     pendingTranscriptRef.current = "";
 
     if (!recognitionRef.current) {
@@ -352,6 +426,14 @@ export function VoiceConcierge() {
         <button className="voice-button ghost" type="button" onClick={stopSpeaking}>
           음성 멈춤
         </button>
+        <button
+          className="voice-button ghost"
+          type="button"
+          disabled={isLoading}
+          onClick={() => void askConcierge("직원 연결해줘")}
+        >
+          직원 연결
+        </button>
       </div>
 
       <div className="voice-typed-row">
@@ -378,6 +460,7 @@ export function VoiceConcierge() {
       </div>
 
       {errorMessage ? <p className="voice-error">{errorMessage}</p> : null}
+      {infoMessage ? <p className="voice-info">{infoMessage}</p> : null}
       {lastQuestion ? (
         <p className="voice-log">
           질문: <span>{lastQuestion}</span>
@@ -394,6 +477,32 @@ export function VoiceConcierge() {
       <p className="voice-log">
         모드: <span>{lastProvider === "gemini" ? "Gemini" : "Fallback"}</span>
       </p>
+      <p className="voice-log">
+        의도:{" "}
+        <span>
+          {ACTION_LABELS[lastIntentAction] ?? lastIntentAction} ({Math.round(lastIntentConfidence * 100)}%)
+        </span>
+      </p>
+      {lastHandoffItemId ? (
+        <p className="voice-log">
+          핸드오프 티켓: <span>{lastHandoffItemId}</span>
+        </p>
+      ) : null}
+      {lastSuggestions.length > 0 ? (
+        <div className="voice-suggestion-row">
+          {lastSuggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              className="voice-suggestion-chip"
+              disabled={isLoading}
+              onClick={() => void askConcierge(suggestion)}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </aside>
   );
 }

@@ -7,6 +7,7 @@ const menus = [
   { href: "/admin/nearby-places", label: "주변 장소 관리" },
   { href: "/admin/conflicts", label: "충돌 관리" },
   { href: "/admin/publish", label: "발행 관리" },
+  { href: "/admin/concierge-inbox", label: "컨시어지 인박스" },
   { href: "/admin/devices", label: "디바이스 상태" },
   { href: "/admin/audit-logs", label: "감사 로그" },
 ];

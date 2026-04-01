@@ -252,6 +252,12 @@ a {
   gap: 0.75rem;
 }
 
+.lobby-module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.75rem;
+}
+
 .category-tile {
   position: relative;
   overflow: hidden;
@@ -387,6 +393,59 @@ a {
 .step-list li {
   color: rgba(226, 226, 229, 0.9);
   line-height: 1.5;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.72rem;
+  border: 1px solid rgba(177, 200, 233, 0.28);
+  background: rgba(12, 14, 16, 0.62);
+  color: var(--on-surface);
+  padding: 0.62rem 0.75rem;
+  font-size: 0.92rem;
+  font-family: inherit;
+}
+
+.input::placeholder {
+  color: rgba(196, 198, 206, 0.65);
+}
+
+.inbox-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.inbox-toolbar label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  color: var(--on-surface-variant);
+}
+
+.inbox-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.inbox-note-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+}
+
+.inbox-note-list {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.inbox-note-list p {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: 0.88rem;
 }
 
 .button {
@@ -554,6 +613,13 @@ a {
   font-weight: 700;
 }
 
+.voice-info {
+  margin: 0.2rem 0;
+  color: var(--secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .voice-log {
   margin: 0.18rem 0;
   font-size: 0.89rem;
@@ -562,6 +628,29 @@ a {
 
 .voice-log span {
   color: var(--on-surface);
+}
+
+.voice-suggestion-row {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.voice-suggestion-chip {
+  border: 1px solid rgba(177, 200, 233, 0.24);
+  background: rgba(177, 200, 233, 0.1);
+  color: var(--secondary);
+  border-radius: 999px;
+  padding: 0.36rem 0.62rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.voice-suggestion-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @media (max-width: 980px) {
@@ -607,6 +696,10 @@ a {
   }
 
   .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inbox-note-row {
     grid-template-columns: 1fr;
   }
 
